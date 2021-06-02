@@ -5,12 +5,8 @@ services:
       context: . #current directory
       dockerfile: Dockerfile #use the dockerfile called Dockerfile
     container_name: ip_location_mapper
-    depends_on:
-      - redis
     ports:
       - "3000:3000" #forward port from my app to the OS
-    links: # app needs that redis is deployed successfully before app runs
-      - redis
     environment: # Pass environment variables to the service
       REDIS_ADDRESS: ${REDIS_ADDRESS}
       REDIS_PASS: ${REDIS_PASS}
@@ -19,11 +15,3 @@ services:
       LIMIT_COMMAND: ${LIMIT_COMMAND}
       LIMIT_REQUEST: ${LIMIT_REQUEST}
       SERVER_PORT: ${SERVER_PORT}
-  redis:
-    image: "redis:alpine" #could be redis or redis alpine, is the same
-    container_name: ip_location_mapper_redis
-    command: redis-server --requirepass ${REDIS_PASS}
-    ports:
-      - "6379:6379" #forward port from Redis to the OS
-    environment:
-      - REDIS_REPLICATION_MODE=master

@@ -3,107 +3,54 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/httprate"
+	"github.com/ivchip/go-meli-filter-ip/domain"
 	"io/ioutil"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 
-	limiter "github.com/davidleitw/gin-limiter"
-	"github.com/gin-gonic/gin"
-	"github.com/go-redis/redis/v8"
+	_ "github.com/joho/godotenv/autoload"
 )
-
-type location struct {
-	Country    string  `json:"country"`
-	Region     string  `json:"region"`
-	City       string  `json:"city"`
-	Lat        float64 `json:"lat"`
-	Lng        float64 `json:"lng"`
-	PostalCode string  `json:"postalCode"`
-	Timezone   string  `json:"timezone"`
-	GeoNameId  int     `json:"geonameId"`
-}
-
-type as struct {
-	Asn    int    `json:"asn"`
-	Name   string `json:"name"`
-	Route  string `json:"route"`
-	Domain string `json:"domain"`
-	Type   string `json:"type"`
-}
-
-type proxy struct {
-	Proxy bool `json:"proxy"`
-	Vpn   bool `json:"vpn"`
-	Tor   bool `json:"tor"`
-}
-
-type ResponseIp struct {
-	Ip       string   `json:"ip"`
-	Location location `json:"location"`
-	Domains  []string `json:"domains"`
-	As       as       `json:"as"`
-	Isp      string   `json:"isp"`
-	Proxy    proxy    `json:"proxy"`
-}
-
-type countries struct {
-	Alpha3         string `json:"alpha3"`
-	CurrencyId     string `json:"currencyId"`
-	CurrencyName   string `json:"currencyName"`
-	CurrencySymbol string `json:"currencySymbol"`
-	Id             string `json:"id"`
-	Name           string `json:"name"`
-}
-
-type Data struct {
-	Results map[string]countries `json:"results"`
-	Note    string               `json:"note"`
-}
-
-type ContextualResult struct {
-	Location      location `json:"location"`
-	CurrencyQuote float64  `json:"currencyQuote"`
-}
 
 func main() {
 	port := os.Getenv("SERVER_PORT")
-	redisAddr := os.Getenv("REDIS_ADDRESS")
-	redisPass := os.Getenv("REDIS_PASS")
-	limitCmd := os.Getenv("LIMIT_COMMAND")
+	limitCmd, _ := strconv.Atoi(os.Getenv("LIMIT_COMMAND"))
 	limitReq, _ := strconv.Atoi(os.Getenv("LIMIT_REQUEST"))
 	data := getCountries()
-	// Set redis client
-	rdb := redis.NewClient(&redis.Options{Addr: redisAddr, Password: redisPass, DB: 0})
-	// Set limit middleWare
-	dispatcher, err := limiter.LimitDispatcher(limitCmd, limitReq, rdb)
-	if err != nil {
-		log.Fatal(err)
-	}
-	router := gin.New()
-	router.Use(gin.Logger())
-	c1 := make(chan ResponseIp)
+
+	router := chi.NewRouter()
+	router.Use(middleware.Logger)
+	router.Use(middleware.RealIP)
+	router.Use(httprate.LimitByIP(limitReq, time.Duration(limitCmd)*time.Minute))
+	c1 := make(chan domain.ResponseIp)
 	c2 := make(chan float64)
 	// Ip test
-	router.GET("/getIp", dispatcher.MiddleWare(limitCmd, limitReq), func(ctx *gin.Context) {
-		ip := ctx.ClientIP()
+	router.Get("/getIp", func(w http.ResponseWriter, r *http.Request) {
+		ip, _, _ := net.SplitHostPort(r.RemoteAddr)
 		go getAPIIpFy(ip, c1)
 		responseIp := <-c1
-		var result ContextualResult
+		var result domain.ContextualResult
 		result.Location = responseIp.Location
 		coin := "USD_" + data.Results[responseIp.Location.Country].CurrencyId
 		go getAPICurrency(coin, c2)
 		cur := <-c2
 		result.CurrencyQuote = cur
-		ctx.JSON(http.StatusOK, result)
+		data, _ := json.Marshal(result)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(data)
 	})
-
-	router.Run(":" + port)
+	http.ListenAndServe(":"+port, router)
 }
 
-func getAPIIpFy(ip string, ch chan<- ResponseIp) {
-	var responseIp ResponseIp
+func getAPIIpFy(ip string, ch chan<- domain.ResponseIp) {
+	var responseIp domain.ResponseIp
 	urlBase := os.Getenv("API_IPFY")
 	url := fmt.Sprintf(urlBase, ip)
 	response, err := http.Get(url)
@@ -138,9 +85,9 @@ func getAPICurrency(coin string, ch chan<- float64) {
 	ch <- currency
 }
 
-func getCountries() Data {
+func getCountries() domain.Data {
 	file, _ := ioutil.ReadFile("countries.json")
-	var data Data
+	var data domain.Data
 	err := json.Unmarshal([]byte(file), &data)
 	if err != nil {
 		log.Fatal(err)
