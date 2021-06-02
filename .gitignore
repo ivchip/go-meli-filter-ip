@@ -1,0 +1,7 @@
+.env
+.docker_build/
+bin/
+.DS_Store
+.idea/
+.export.sh
+vendor/
