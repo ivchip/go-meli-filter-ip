@@ -1,7 +1,5 @@
 package domain
 
-import "context"
-
 type location struct {
 	Country    string  `json:"country"`
 	Region     string  `json:"region"`
@@ -56,5 +54,5 @@ type ContextualResult struct {
 }
 
 type ContextualResultUseCases interface {
-	GetByIP(ctx context.Context, ip string) (ContextualResult, error)
+	GetByIP(ip string) (ContextualResult, error)
 }
