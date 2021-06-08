@@ -5,29 +5,52 @@ import (
 	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/go-chi/httprate"
+	"github.com/go-redis/redis/v8"
 	"github.com/ivchip/go-meli-filter-ip/domain"
+	_ "github.com/joho/godotenv/autoload"
+	"github.com/ulule/limiter/v3"
+	"github.com/ulule/limiter/v3/drivers/middleware/stdlib"
+	redisLimiter "github.com/ulule/limiter/v3/drivers/store/redis"
 	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
 	"os"
-	"strconv"
-	"time"
-
-	_ "github.com/joho/godotenv/autoload"
 )
 
 func main() {
 	port := os.Getenv("SERVER_PORT")
-	limitCmd, _ := strconv.Atoi(os.Getenv("LIMIT_COMMAND"))
-	limitReq, _ := strconv.Atoi(os.Getenv("LIMIT_REQUEST"))
+	redisAddr := os.Getenv("REDIS_ADDRESS")
+	redisPass := os.Getenv("REDIS_PASS")
+	limitCmd := os.Getenv("LIMIT_COMMAND")
 	data := getCountries()
+
+	// Define a limit rate to number requests per hour.
+	rate, err := limiter.NewRateFromFormatted(limitCmd)
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+
+	client := redis.NewClient(&redis.Options{Addr: redisAddr, Password: redisPass, DB: 0})
+
+	// Create a store with the redis client.
+	store, err := redisLimiter.NewStoreWithOptions(client, limiter.StoreOptions{
+		Prefix: "limiter_chi",
+	})
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+
+	// Create a new middleware with the limiter instance.
+	middlewareLimit := stdlib.NewMiddleware(limiter.New(store, rate, limiter.WithTrustForwardHeader(true)))
 
 	router := chi.NewRouter()
 	router.Use(middleware.Logger)
 	router.Use(middleware.RealIP)
-	router.Use(httprate.LimitByIP(limitReq, time.Duration(limitCmd)*time.Minute))
+	router.Use(middlewareLimit.Handler)
+
 	c1 := make(chan domain.ResponseIp)
 	c2 := make(chan float64)
 	// Ip test
