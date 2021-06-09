@@ -31,7 +31,7 @@ func (r *chiRouter) MIDDLEWARES() {
 
 func (*chiRouter) SERVE(port string) {
 	fmt.Printf("Chi HTTP Server running on port: %v", port)
-	err := http.ListenAndServe(":"+port, nil)
+	err := http.ListenAndServe(":"+port, chiDispatcher)
 	if err != nil {
 		log.Println("An error occurred starting HTTP server at port " + port)
 		log.Fatal("Error: " + err.Error())

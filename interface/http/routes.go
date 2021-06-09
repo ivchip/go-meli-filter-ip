@@ -4,7 +4,6 @@ import "net/http"
 
 // Route define a structure to create routes
 type Route struct {
-	Name        string
 	Method      string
 	Pattern     string
 	HandlerFunc http.HandlerFunc
@@ -16,7 +15,6 @@ type Routes []Route
 // Initialize our routes
 var routes = Routes{
 	Route{
-		"GetIP",
 		"GET",
 		"/getIP",
 		GetByIP,
