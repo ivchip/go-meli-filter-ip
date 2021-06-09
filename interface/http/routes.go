@@ -13,10 +13,20 @@ type Route struct {
 type Routes []Route
 
 // Initialize our routes
-var routes = Routes{
+var routesPrivate = Routes{
 	Route{
 		"GET",
 		"/getIP",
 		GetByIP,
+	},
+}
+
+var routesPublic = Routes{
+	Route{
+		Method:  "GET",
+		Pattern: "/",
+		HandlerFunc: func(w http.ResponseWriter, r *http.Request) {
+			w.Write([]byte("welcome anonymous"))
+		},
 	},
 }

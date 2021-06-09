@@ -3,6 +3,7 @@ package http
 import (
 	"fmt"
 	"github.com/go-chi/chi/v5"
+	middleware2 "github.com/ivchip/go-meli-filter-ip/interface/http/middleware"
 	"log"
 	"net/http"
 )
@@ -14,22 +15,29 @@ var (
 )
 
 //NewChiRouter is a Chi HTTP router constructor
-func NewChiRouter() Router {
+func newChiRouter() Router {
 	return &chiRouter{}
 }
 
-func (*chiRouter) ROUTES() {
-	for _, route := range routes {
-		chiDispatcher.Method(route.Method, route.Pattern, route.HandlerFunc)
-	}
+func (*chiRouter) routesWithMiddleware() {
+	chiDispatcher.Group(func(r chi.Router) {
+		middleware := middleware2.InitMiddleware()
+		r.Use(middleware.LimitRate)
+		for _, route := range routesPrivate {
+			r.Method(route.Method, route.Pattern, route.HandlerFunc)
+		}
+	})
 }
 
-func (r *chiRouter) MIDDLEWARES() {
-	middleware := InitMiddleware()
-	chiDispatcher.Use(middleware.LimitRate)
+func (r *chiRouter) routesWithOutMiddleware() {
+	chiDispatcher.Group(func(r chi.Router) {
+		for _, route := range routesPublic {
+			r.Method(route.Method, route.Pattern, route.HandlerFunc)
+		}
+	})
 }
 
-func (*chiRouter) SERVE(port string) {
+func (*chiRouter) serve(port string) {
 	fmt.Printf("Chi HTTP Server running on port: %v", port)
 	err := http.ListenAndServe(":"+port, chiDispatcher)
 	if err != nil {

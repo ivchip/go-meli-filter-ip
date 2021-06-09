@@ -8,8 +8,5 @@ import (
 
 func main() {
 	port := os.Getenv("SERVER_PORT")
-	router := delivery.NewChiRouter()
-	router.MIDDLEWARES()
-	router.ROUTES()
-	router.SERVE(port)
+	delivery.StartWebServer(port)
 }
