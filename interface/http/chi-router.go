@@ -19,6 +19,16 @@ func newChiRouter() Router {
 	return &chiRouter{}
 }
 
+func NewMuxChiRouter() *chi.Mux {
+	router := chi.NewRouter()
+	router.Group(func(r chi.Router) {
+		for _, route := range routesPrivate {
+			r.Method(route.Method, route.Pattern, route.HandlerFunc)
+		}
+	})
+	return router
+}
+
 func (*chiRouter) routesWithMiddleware() {
 	chiDispatcher.Group(func(r chi.Router) {
 		middleware := middleware2.InitMiddleware()
