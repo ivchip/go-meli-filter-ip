@@ -6,6 +6,7 @@ import (
 	delivery "github.com/ivchip/go-meli-filter-ip/interface/http"
 	"net/http"
 	"net/http/httptest"
+	"testing"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -37,3 +38,28 @@ var _ = Describe("Handlers", func() {
 	})
 
 })
+
+func TestGetByIp(t *testing.T) {
+	//ip := "192.146.146.164"
+	resp := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/ipBlocking/:ip", nil)
+	req.Header.Set("Content-Type", "application/json")
+	handler := http.HandlerFunc(delivery.GetByIp)
+	handler.ServeHTTP(resp, req)
+}
+
+func TestGetAll(t *testing.T) {
+	resp := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/ipBlocking", nil)
+	req.Header.Set("Content-Type", "application/json")
+	handler := http.HandlerFunc(delivery.GetAll)
+	handler.ServeHTTP(resp, req)
+}
+
+func TestCreate(t *testing.T) {
+
+}
+
+func TestUpdate(t *testing.T) {
+
+}

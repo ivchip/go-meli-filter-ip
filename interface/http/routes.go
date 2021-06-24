@@ -23,10 +23,23 @@ var routesPrivate = Routes{
 
 var routesPublic = Routes{
 	Route{
-		Method:  "GET",
-		Pattern: "/",
-		HandlerFunc: func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("welcome anonymous"))
-		},
+		Method:      "GET",
+		Pattern:     "/ipBlocking",
+		HandlerFunc: GetAll,
+	},
+	Route{
+		Method:      "GET",
+		Pattern:     "/ipBlocking/{ip}",
+		HandlerFunc: GetByIp,
+	},
+	Route{
+		Method:      "POST",
+		Pattern:     "/ipBlocking",
+		HandlerFunc: Create,
+	},
+	Route{
+		Method:      "PUT",
+		Pattern:     "/ipBlocking/{ip}",
+		HandlerFunc: Update,
 	},
 }
